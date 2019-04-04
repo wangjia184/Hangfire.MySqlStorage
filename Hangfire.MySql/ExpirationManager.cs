@@ -50,7 +50,7 @@ namespace Hangfire.MySql
                     {
                         try
                         {
-                            Logger.DebugFormat("delete from `{0}` where ExpireAt < @now limit @count;", table);
+                            Logger.DebugFormat("delete from `{0}` where ExpireAt < @now order by ExpireAt, Id limit @count;", table);
 
                             using (
                                 new MySqlDistributedLock(
@@ -62,7 +62,7 @@ namespace Hangfire.MySql
                             {
                                 removedCount = connection.Execute(
                                     String.Format(
-                                        "delete from `{0}` where ExpireAt < @now limit @count;", table),
+                                        "delete from `{0}` where ExpireAt < @now order by ExpireAt, Id limit @count;", table),
                                     new { now = DateTime.UtcNow, count = NumberOfRecordsInSinglePass });
                             }
 
