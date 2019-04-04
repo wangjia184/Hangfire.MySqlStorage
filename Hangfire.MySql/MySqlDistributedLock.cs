@@ -61,7 +61,8 @@ namespace Hangfire.MySql
                         "  WHERE NOT EXISTS ( " +
                         $"  		SELECT * FROM `{_storageOptions.TablesPrefix}DistributedLock` " +
                         "     	WHERE Resource = @resource " +
-                        "       AND CreatedAt > @expired);", 
+                        "       AND CreatedAt > @expired);" +
+                        "COMMIT;",
                         new
                         {
                             resource,
