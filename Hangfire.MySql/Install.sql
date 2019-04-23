@@ -84,6 +84,8 @@ CREATE TABLE `[tablesPrefix]JobQueue` (
   `Queue` nvarchar(50) NOT NULL,
   `FetchToken` nvarchar(36) DEFAULT NULL,
   PRIMARY KEY (`Id`),
+  INDEX `IX_[tablesPrefix]JobQueue_JobId` (`JobId`),
+  INDEX `IX_[tablesPrefix]JobQueue_FetchedToken` (`FetchToken`),
   INDEX `IX_[tablesPrefix]JobQueue_QueueAndFetchedAt` (`Queue`,`FetchedAt`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
 
@@ -119,7 +121,7 @@ CREATE TABLE `[tablesPrefix]Server` (
 CREATE TABLE `[tablesPrefix]Set` (
   `Id` int(11) NOT NULL AUTO_INCREMENT,
   `Key` nvarchar(100) NOT NULL,
-  `Value` nvarchar(256) NOT NULL,
+  `Value` nvarchar(200) NOT NULL,
   `Score` float NOT NULL,
   `ExpireAt` datetime DEFAULT NULL,
   PRIMARY KEY (`Id`),
