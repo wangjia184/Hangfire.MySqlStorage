@@ -74,7 +74,7 @@ namespace Hangfire.MySql
                     }
 
                     connection.Execute(
-                        $"insert into `{_storageOptions.TablesPrefix}JobParameter` (JobId, Name, Value) values (@jobId, @name, @value)",
+                        $"insert into `{_storageOptions.TablesPrefix}JobParameter` (JobId, Name, Value) values (@jobId, @name, @value);",
                         parameterArray);
                 }
 
@@ -124,9 +124,11 @@ namespace Hangfire.MySql
 
             return _storage.UseConnection(connection =>
                 connection.Query<string>(
+                    "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; " +
                     "select Value " +
                     $"from `{_storageOptions.TablesPrefix}JobParameter` " +
-                    "where JobId = @id and Name = @name",
+                    "where JobId = @id and Name = @name;" +
+                    "COMMIT;",
                     new { id = id, name = name }).SingleOrDefault());
         }
 
@@ -139,9 +141,11 @@ namespace Hangfire.MySql
                 var jobData =
                     connection
                         .Query<SqlJob>(
+                            "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; \n" +
                             "select InvocationData, StateName, Arguments, CreatedAt " +
                             $"from `{_storageOptions.TablesPrefix}Job` " +
-                            "where Id = @id",
+                            "where Id = @id; \n" +
+                            "COMMIT;",
                             new { id = jobId })
                         .SingleOrDefault();
 
@@ -180,9 +184,11 @@ namespace Hangfire.MySql
             {
                 var sqlState =
                     connection.Query<SqlState>(
+                        "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; \n" +
                         "select s.Name, s.Reason, s.Data " +
                         $"from `{_storageOptions.TablesPrefix}State` s inner join `{_storageOptions.TablesPrefix}Job` j on j.StateId = s.Id " +
-                        "where j.Id = @jobId",
+                        "where j.Id = @jobId; \n" +
+                        "COMMIT;",
                         new { jobId = jobId }).SingleOrDefault();
                 if (sqlState == null)
                 {
@@ -272,7 +278,9 @@ namespace Hangfire.MySql
             return
                 _storage.UseConnection(connection =>
                     connection.Query<int>(
-                        $"select count(`Key`) from `{_storageOptions.TablesPrefix}Set` where `Key` = @key",
+                        "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; \n" +
+                        $"select count(`Key`) from `{_storageOptions.TablesPrefix}Set` where `Key` = @key; \n" +
+                        "COMMIT;",
                         new { key = key }).First());
         }
 
@@ -283,6 +291,7 @@ namespace Hangfire.MySql
             return _storage.UseConnection(connection =>
                 connection
                     .Query<string>($@"
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 select `Value` 
 from (
 	    select `Value`, @rownum := @rownum + 1 AS rank
@@ -291,7 +300,8 @@ from (
         where `Key` = @key
         order by Id
      ) ranked
-where ranked.rank between @startingFrom and @endingAt",
+where ranked.rank between @startingFrom and @endingAt;
+COMMIT;",
                         new { key = key, startingFrom = startingFrom + 1, endingAt = endingAt + 1 })
                     .ToList());
         }
@@ -304,7 +314,9 @@ where ranked.rank between @startingFrom and @endingAt",
                 _storage.UseConnection(connection =>
                 {
                     var result = connection.Query<string>(
-                        $"select Value from `{_storageOptions.TablesPrefix}Set` where `Key` = @key",
+                        $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                        select Value from `{_storageOptions.TablesPrefix}Set` where `Key` = @key;
+                        COMMIT;",
                         new { key });
 
                     return new HashSet<string>(result);
@@ -320,11 +332,13 @@ where ranked.rank between @startingFrom and @endingAt",
             return
                 _storage.UseConnection(connection =>
                     connection.Query<string>(
+                        "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; \n" +
                         "select Value " +
                         $"from `{_storageOptions.TablesPrefix}Set` " +
                         "where `Key` = @key and Score between @from and @to " +
                         "order by Score " +
-                        "limit 1",
+                        "limit 1; \n" +
+                        "COMMIT; ",
                         new { key, from = fromScore, to = toScore })
                         .SingleOrDefault());
         }
@@ -334,11 +348,13 @@ where ranked.rank between @startingFrom and @endingAt",
             if (key == null) throw new ArgumentNullException("key");
 
             string query = $@"
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 select sum(s.`Value`) from (select sum(`Value`) as `Value` from `{_storageOptions.TablesPrefix}Counter`
 where `Key` = @key
 union all
 select `Value` from `{_storageOptions.TablesPrefix}AggregatedCounter`
-where `Key` = @key) as s";
+where `Key` = @key) as s;
+COMMIT; ";
 
             return
                 _storage
@@ -354,7 +370,9 @@ where `Key` = @key) as s";
                 _storage
                     .UseConnection(connection =>
                         connection.Query<long>(
-                            $"select count(Id) from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key",
+                            $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                            select count(Id) from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key;
+                            COMMIT; ",
                             new { key = key }).Single());
         }
 
@@ -366,7 +384,9 @@ where `Key` = @key) as s";
             {
                 var result =
                     connection.Query<DateTime?>(
-                        $"select min(ExpireAt) from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key",
+                        $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                            select min(ExpireAt) from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key;
+                        COMMIT; ",
                         new { key = key }).Single();
                 if (!result.HasValue) return TimeSpan.FromSeconds(-1);
 
@@ -382,7 +402,9 @@ where `Key` = @key) as s";
                 _storage
                     .UseConnection(connection =>
                         connection.Query<long>(
-                            $"select count(Id) from `{_storageOptions.TablesPrefix}List` where `Key` = @key",
+                            $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                            select count(Id) from `{_storageOptions.TablesPrefix}List` where `Key` = @key;
+                            COMMIT; ",
                             new { key = key }).Single());
         }
 
@@ -394,7 +416,9 @@ where `Key` = @key) as s";
             {
                 var result =
                     connection.Query<DateTime?>(
-                        $"select min(ExpireAt) from `{_storageOptions.TablesPrefix}List` where `Key` = @key",
+                        $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                        select min(ExpireAt) from `{_storageOptions.TablesPrefix}List` where `Key` = @key;
+                        COMMIT; ",
                         new { key = key }).Single();
                 if (!result.HasValue) return TimeSpan.FromSeconds(-1);
 
@@ -411,7 +435,9 @@ where `Key` = @key) as s";
                 _storage
                     .UseConnection(connection =>
                         connection.Query<string>(
-                            $"select `Value` from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key and `Field` = @field",
+                            $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                            select `Value` from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key and `Field` = @field;
+                            COMMIT; ",
                             new { key = key, field = name }).SingleOrDefault());
         }
 
@@ -420,6 +446,7 @@ where `Key` = @key) as s";
             if (key == null) throw new ArgumentNullException("key");
 
             string query = $@"
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 select `Value` 
 from (
         select `Value`, @rownum := @rownum + 1 AS rank
@@ -428,7 +455,8 @@ from (
         where `Key` = @key
         order by Id desc
      ) ranked
-where ranked.rank between @startingFrom and @endingAt";
+where ranked.rank between @startingFrom and @endingAt;
+COMMIT;";
             return
                 _storage
                     .UseConnection(connection =>
@@ -443,9 +471,11 @@ where ranked.rank between @startingFrom and @endingAt";
             if (key == null) throw new ArgumentNullException("key");
 
             string query = $@"
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 select `Value` from `{_storageOptions.TablesPrefix}List`
 where `Key` = @key
-order by Id desc";
+order by Id desc;
+COMMIT;";
 
             return _storage.UseConnection(connection => connection.Query<string>(query, new { key = key }).ToList());
         }
@@ -459,7 +489,9 @@ order by Id desc";
                 var result =
                     connection
                         .Query<DateTime?>(
-                            $"select min(ExpireAt) from `{_storageOptions.TablesPrefix}Set` where `Key` = @key",
+                            $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                            select min(ExpireAt) from `{_storageOptions.TablesPrefix}Set` where `Key` = @key;
+                            COMMIT;",
                             new { key = key }).Single();
                 if (!result.HasValue) return TimeSpan.FromSeconds(-1);
 
@@ -492,7 +524,9 @@ order by Id desc";
             return _storage.UseConnection(connection =>
             {
                 var result = connection.Query<SqlHash>(
-                    $"select Field, Value from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key",
+                    $@"SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+                    select Field, Value from `{_storageOptions.TablesPrefix}Hash` where `Key` = @key;
+                    COMMIT;",
                     new { key })
                     .ToDictionary(x => x.Field, x => x.Value);
 

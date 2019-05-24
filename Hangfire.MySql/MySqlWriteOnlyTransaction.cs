@@ -243,13 +243,15 @@ namespace Hangfire.MySql
             AcquireListLock();
             QueueCommand(x => x.Execute(
                 $@"
+SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
 delete lst
 from `{_storageOptions.TablesPrefix}List` lst
 	inner join (SELECT tmp.Id, @rownum := @rownum + 1 AS rank
 		  		FROM `{_storageOptions.TablesPrefix}List` tmp, 
        				(SELECT @rownum := 0) r ) ranked on ranked.Id = lst.Id
 where lst.Key = @key
-    and ranked.rank not between @start and @end",
+    and ranked.rank not between @start and @end;
+COMMIT;",
                 new { key = key, start = keepStartingFrom + 1, end = keepEndingAt + 1 }));
         }
 

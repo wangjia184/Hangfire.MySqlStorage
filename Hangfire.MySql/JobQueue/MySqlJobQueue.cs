@@ -62,9 +62,11 @@ namespace Hangfire.MySql.JobQueue
                             fetchedJob =
                                 connection
                                     .Query<FetchedJob>(
+                                        "SET SESSION TRANSACTION ISOLATION LEVEL READ UNCOMMITTED; \n" +
                                         "select Id, JobId, Queue " +
                                         $"from `{_options.TablesPrefix}JobQueue` " +
-                                        "where FetchToken = @fetchToken;",
+                                        "where FetchToken = @fetchToken; \n" +
+                                        "COMMIT;",
                                         new
                                         {
                                             fetchToken = token
