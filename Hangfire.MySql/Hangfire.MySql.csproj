@@ -18,10 +18,10 @@
         <EmbeddedResource Include="Install.sql" />
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="Microsoft.CSharp" Version="4.6.0" />
-        <PackageReference Include="MySqlConnector" Version="0.58.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
-        <PackageReference Include="Dapper" Version="2.0.4" />
-        <PackageReference Include="Hangfire.Core" Version="1.7.6" />
+        <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+        <PackageReference Include="MySqlConnector" Version="0.61.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+        <PackageReference Include="Dapper" Version="2.0.30" />
+        <PackageReference Include="Hangfire.Core" Version="1.7.7" />
     </ItemGroup>
 </Project>
